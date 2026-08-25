@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TinyTransformer</title>
+  <meta name="description" content="Run text through a from-scratch transformer encoder block and see its internals: embeddings, positional encoding, attention weights, and output." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <div class="page-header-inner">
+      <h1>TinyTransformer <span class="tag">encoder visualizer</span></h1>
+      <p class="subtitle">
+        A transformer encoder block, written from scratch in C# with no ML framework, run live in your
+        browser. This is <strong>not a trained language model</strong> - weights are random on every request -
+        it exists to show what each piece of a transformer actually computes.
+      </p>
+      <nav class="page-nav">
+        <a href="/swagger">API docs</a>
+        <a href="https://github.com/konradcinkusz/tiny-transformer" target="_blank" rel="noopener">Source</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel" aria-labelledby="input-heading">
+      <h2 id="input-heading">Input</h2>
+      <form id="encode-form">
+        <label for="text">Text <span class="hint">(max 64 characters, character-level tokenization)</span></label>
+        <input id="text" name="text" type="text" maxlength="64" value="the cat sat on the mat" autocomplete="off" />
+
+        <details>
+          <summary>Advanced settings</summary>
+          <div class="grid">
+            <label>d_model (embedding size)
+              <input id="dModel" type="number" min="4" max="64" step="2" value="16" />
+            </label>
+            <label>d_k (attention head size)
+              <input id="dK" type="number" min="2" max="64" value="16" />
+            </label>
+            <label>feed-forward hidden size
+              <input id="ffHidden" type="number" min="4" max="256" value="32" />
+            </label>
+            <label>random seed <span class="hint">(blank = random)</span>
+              <input id="seed" type="number" placeholder="random" />
+            </label>
+          </div>
+        </details>
+
+        <div class="actions">
+          <button type="submit" id="run-button">Run encoder</button>
+          <span id="status" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+      <p class="error" id="error-box" hidden></p>
+    </section>
+
+    <section class="panel" id="results" hidden aria-labelledby="results-heading">
+      <h2 id="results-heading">Result</h2>
+
+      <div class="config-summary" id="config-summary"></div>
+
+      <h3>Tokens</h3>
+      <p class="hint">Each distinct character seen in the input gets the next free token id, in order of first appearance.</p>
+      <div id="tokens" class="tokens"></div>
+
+      <div class="matrices">
+        <article>
+          <h3>Token embeddings</h3>
+          <p class="hint">Random (untrained) lookup vector per token id - shape [tokens &times; d_model].</p>
+          <div class="matrix-scroll" id="mat-embeddings"></div>
+        </article>
+
+        <article>
+          <h3>Positional encoding</h3>
+          <p class="hint">Sinusoidal, added to the embeddings before attention - without it, order carries no information (see the "why" in the README).</p>
+          <div class="matrix-scroll" id="mat-positional"></div>
+        </article>
+
+        <article>
+          <h3>Attention weights</h3>
+          <p class="hint">Row = query token, column = attends-to token. Each row sums to 1.</p>
+          <div class="matrix-scroll" id="mat-attention"></div>
+        </article>
+
+        <article>
+          <h3>Encoder block output</h3>
+          <p class="hint">After self-attention, residual + LayerNorm, feed-forward, residual + LayerNorm - shape [tokens &times; d_model].</p>
+          <div class="matrix-scroll" id="mat-output"></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>TinyTransformer is an educational project. See the README for what it does and does not do.</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -28,7 +28,12 @@ public class SelfAttention : ILayer
         _Wo = new Linear(dK, dModel, rnd);
     }
 
-    public float[,] Forward(float[,] X)
+    public float[,] Forward(float[,] X) => ForwardWithAttention(X).Output;
+
+    // Same computation as Forward, but also returns the attention weight
+    // matrix (post-softmax, one row per query token) - useful for callers
+    // that want to inspect or visualize what each token attended to.
+    public (float[,] Output, float[,] AttentionWeights) ForwardWithAttention(float[,] X)
     {
         //project input into Q, K, V
         var Q = _Wq.Forward(X);
@@ -50,6 +55,6 @@ public class SelfAttention : ILayer
         //project back to model width
         var outProject = _Wo.Forward(context);
 
-        return outProject;
+        return (outProject, attention);
     }
 }

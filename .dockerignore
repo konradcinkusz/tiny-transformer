@@ -1,0 +1,12 @@
+# Exclusion-based: only what the Dockerfile actually COPYs should reach the
+# build context. Everything else is denied by default.
+*
+
+!Directory.Build.props
+!Directory.Packages.props
+!TinyTransformer.Core/**
+!TinyTransformer.Api/**
+
+**/bin/
+**/obj/
+**/.vs/

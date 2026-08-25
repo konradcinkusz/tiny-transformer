@@ -55,4 +55,42 @@ public class SelfAttentionTests : TestsBase
         var Y_exepcted = MathOps.ReverseRow(Y);
         RowsShouldBeApproximatelyEqaul(revY, Y_exepcted, 1e-5f);
     }
+
+    [Fact]
+    public void ForwardWithAttention_OutputMatchesForward()
+    {
+        int T = 4, dModel = 6, dK = 3;
+        var X = MathOps.InitMatrix(T, dModel, new Random(11));
+        var attention = new SelfAttention(dModel, dK, new Random(11));
+
+        var forwardOnly = attention.Forward(X);
+        var (withAttentionOutput, _) = attention.ForwardWithAttention(X);
+
+        RowsShouldBeApproximatelyEqaul(forwardOnly, withAttentionOutput, 1e-6f);
+    }
+
+    [Fact]
+    public void ForwardWithAttention_WeightsFormARowStochasticMatrix()
+    {
+        // softmax output: every row is a probability distribution over
+        // "attends-to" tokens - non-negative and summing to 1.
+        int T = 5, dModel = 6, dK = 4;
+        var X = MathOps.InitMatrix(T, dModel, new Random(3));
+        var attention = new SelfAttention(dModel, dK, new Random(3));
+
+        var (_, weights) = attention.ForwardWithAttention(X);
+
+        weights.GetLength(0).Should().Be(T);
+        weights.GetLength(1).Should().Be(T);
+        for (int i = 0; i < T; i++)
+        {
+            float rowSum = 0f;
+            for (int j = 0; j < T; j++)
+            {
+                weights[i, j].Should().BeGreaterThanOrEqualTo(0f);
+                rowSum += weights[i, j];
+            }
+            rowSum.Should().BeApproximately(1f, 1e-4f);
+        }
+    }
 }

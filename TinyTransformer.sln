@@ -16,6 +16,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{02EA681E-C
 		docs\diagram_solution.puml = docs\diagram_solution.puml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TinyTransformer.Api", "TinyTransformer.Api\TinyTransformer.Api.csproj", "{7C0C858C-1686-4EF6-9863-5F9BC80A8403}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TinyTransformer.Api.Tests", "TinyTransformer.Api.Tests\TinyTransformer.Api.Tests.csproj", "{98163765-2C9E-4685-BC8E-7C0CBE3B63F5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,6 +38,14 @@ Global
 		{DAA751D8-640D-4B31-8F8C-9C4DD8F222EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DAA751D8-640D-4B31-8F8C-9C4DD8F222EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DAA751D8-640D-4B31-8F8C-9C4DD8F222EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C0C858C-1686-4EF6-9863-5F9BC80A8403}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C0C858C-1686-4EF6-9863-5F9BC80A8403}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C0C858C-1686-4EF6-9863-5F9BC80A8403}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C0C858C-1686-4EF6-9863-5F9BC80A8403}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98163765-2C9E-4685-BC8E-7C0CBE3B63F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98163765-2C9E-4685-BC8E-7C0CBE3B63F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98163765-2C9E-4685-BC8E-7C0CBE3B63F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98163765-2C9E-4685-BC8E-7C0CBE3B63F5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
