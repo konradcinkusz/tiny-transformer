@@ -23,7 +23,7 @@ RUN dotnet publish TinyTransformer.Api/TinyTransformer.Api.csproj \
 # Runtime image major version matches the TFM major version (net8.0 -> aspnet:8.0);
 # default roll-forward does not cross a major version, so a mismatch here is a
 # startup failure, not a warning.
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
 ENV ASPNETCORE_URLS=http://+:8080
