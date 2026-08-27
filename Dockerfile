@@ -3,7 +3,7 @@
 # Only TinyTransformer.Api ships - it is the composition root that serves
 # both the JSON API and the static frontend (wwwroot) from one Kestrel
 # process. TinyTransformer.Core is a dependency, pulled in via ProjectReference.
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Restore first, touching only the files that affect it, so an ordinary code
