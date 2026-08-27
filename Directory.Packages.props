@@ -14,7 +14,7 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
 
     <!-- TinyTransformer.Api -->
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
 
 </Project>
