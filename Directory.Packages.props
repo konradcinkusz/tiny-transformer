@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <!-- Testing (TinyTransformer.Tests, TinyTransformer.Api.Tests) -->
-    <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="FluentAssertions" Version="8.6.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.11" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
