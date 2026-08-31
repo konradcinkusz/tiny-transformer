@@ -103,6 +103,26 @@ public class TransformerEncoderBlockTests : TestsBase
     }
 
     [Fact]
+    public void ForwardWithPerHeadAttention_AveragingItMatchesForwardWithAttention()
+    {
+        int T = 5, dModel = 12, dK = 4, ffHidden = 16, numHeads = 3;
+        var X = MathOps.InitMatrix(T, dModel, new Random(14));
+        var block = new TransformerEncoderBlock(dModel, dK, ffHidden, new Random(14), numHeads);
+
+        var (output, perHead) = block.ForwardWithPerHeadAttention(X);
+        var (averagedOutput, averagedAttention) = block.ForwardWithAttention(X);
+
+        MatricesShouldBeApproximatelyEqual(output, averagedOutput, 1e-6f);
+        perHead.Length.Should().Be(numHeads);
+        foreach (var head in perHead)
+        {
+            head.GetLength(0).Should().Be(T);
+            head.GetLength(1).Should().Be(T);
+        }
+        MatricesShouldBeApproximatelyEqual(MathOps.AverageAcrossHeads(perHead), averagedAttention, 1e-6f);
+    }
+
+    [Fact]
     public void Backward_MatchesNumericalGradient()
     {
         int T = 4, dModel = 6, dK = 3, ffHidden = 12, numHeads = 2;

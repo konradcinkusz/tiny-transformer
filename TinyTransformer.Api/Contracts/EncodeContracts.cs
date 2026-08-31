@@ -43,6 +43,12 @@ public sealed record EncodeConfig(
 
 // Every matrix is [sequenceLength x dModel] except AttentionWeights, which is
 // [sequenceLength x sequenceLength] (one attention distribution per token).
+//
+// AttentionWeights is the last layer's attention, averaged across heads -
+// kept for clients that only want one heatmap. AttentionWeightsPerLayer
+// carries every layer's and every head's own attention, unaveraged, indexed
+// [layer][head] -> [sequenceLength x sequenceLength]; AttentionWeights is
+// exactly MathOps.AverageAcrossHeads applied to its last entry.
 public sealed record EncodeResponse(
     IReadOnlyList<string> Tokens,
     IReadOnlyList<int> TokenIds,
@@ -50,4 +56,5 @@ public sealed record EncodeResponse(
     float[][] Embeddings,
     float[][] PositionalEncoding,
     float[][] AttentionWeights,
+    float[][][][] AttentionWeightsPerLayer,
     float[][] EncoderOutput);

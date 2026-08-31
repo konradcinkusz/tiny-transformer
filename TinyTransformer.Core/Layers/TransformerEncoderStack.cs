@@ -32,23 +32,32 @@ public class TransformerEncoderStack : IDifferentiableLayer, IHasParameterGradie
 
     public float[,] Forward(float[,] X) => ForwardWithAttention(X).Output;
 
-    // AttentionWeights is the *last* block's attention matrix (itself already
-    // averaged across heads by TransformerEncoderBlock) - the one closest to
-    // the output, and the one most callers mean when they ask "what did the
-    // model attend to." With numLayers = 1 this is exactly that one block's
-    // attention, so the single-block behavior every existing caller relies on
-    // is unchanged.
+    // AttentionWeights is the *last* block's attention matrix, averaged
+    // across heads - the one closest to the output, and the one most callers
+    // mean when they ask "what did the model attend to." With numLayers = 1
+    // and numHeads = 1 this is exactly that one block's attention, so the
+    // single-block behavior every existing caller relies on is unchanged.
+    // Callers that want every layer's and every head's attention (e.g. the
+    // API/frontend, see ROADMAP.md Phase 3) should use ForwardWithAllAttention.
     public (float[,] Output, float[,] AttentionWeights) ForwardWithAttention(float[,] X)
     {
+        var (output, perLayerPerHead) = ForwardWithAllAttention(X);
+        return (output, MathOps.AverageAcrossHeads(perLayerPerHead[^1]));
+    }
+
+    // Same computation as Forward, but also returns every layer's and every
+    // head's own attention weights, unaveraged. PerLayerPerHeadAttentionWeights
+    // is indexed [layer][head] -> one [T x T] matrix, in layer order (block 0
+    // first) then head order (mirrors MultiHeadSelfAttention.ForwardWithAttention).
+    public (float[,] Output, float[][][,] PerLayerPerHeadAttentionWeights) ForwardWithAllAttention(float[,] X)
+    {
         float[,] current = X;
-        float[,]? lastAttention = null;
+        var perLayer = new float[_blocks.Length][][,];
 
-        foreach (var block in _blocks)
-            (current, lastAttention) = block.ForwardWithAttention(current);
+        for (int i = 0; i < _blocks.Length; i++)
+            (current, perLayer[i]) = _blocks[i].ForwardWithPerHeadAttention(current);
 
-        // The constructor guard (numLayers > 0) guarantees the loop above ran
-        // at least once, so lastAttention is always assigned here.
-        return (current, lastAttention!);
+        return (current, perLayer);
     }
 
     // Reverse of Forward: walk the blocks back-to-front, each one's Backward

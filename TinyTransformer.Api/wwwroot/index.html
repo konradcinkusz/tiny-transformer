@@ -43,6 +43,12 @@
             <label>feed-forward hidden size
               <input id="ffHidden" type="number" min="4" max="256" value="32" />
             </label>
+            <label>attention heads
+              <input id="numHeads" type="number" min="1" max="8" step="1" value="1" />
+            </label>
+            <label>encoder layers
+              <input id="numLayers" type="number" min="1" max="6" step="1" value="1" />
+            </label>
             <label>random seed <span class="hint">(blank = random)</span>
               <input id="seed" type="number" placeholder="random" />
             </label>
@@ -82,6 +88,10 @@
         <article>
           <h3>Attention weights</h3>
           <p class="hint">Row = query token, column = attends-to token. Each row sums to 1.</p>
+          <div class="attention-controls" id="attention-controls" hidden>
+            <label>Layer <select id="attention-layer"></select></label>
+            <label>Head <select id="attention-head"></select></label>
+          </div>
           <div class="matrix-scroll" id="mat-attention"></div>
         </article>
 

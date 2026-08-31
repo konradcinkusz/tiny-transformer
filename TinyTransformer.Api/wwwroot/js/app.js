@@ -8,12 +8,22 @@
   const resultsSection = document.getElementById("results");
   const configSummary = document.getElementById("config-summary");
   const tokensEl = document.getElementById("tokens");
+  const attentionControls = document.getElementById("attention-controls");
+  const attentionLayerSelect = document.getElementById("attention-layer");
+  const attentionHeadSelect = document.getElementById("attention-head");
 
   const POS_COLOR = [91, 66, 243]; // indigo - positive values
   const NEG_COLOR = [211, 47, 47]; // red - negative values
   const MAX_BLEND = 0.75; // never fully saturate, so dark cell text stays legible
 
+  // The last successful response, kept so the layer/head selectors can
+  // re-render the attention heatmap from already-fetched data instead of
+  // making a new request.
+  let currentResult = null;
+
   form.addEventListener("submit", onSubmit);
+  attentionLayerSelect.addEventListener("change", renderAttentionHeatmap);
+  attentionHeadSelect.addEventListener("change", renderAttentionHeatmap);
 
   async function onSubmit(event) {
     event.preventDefault();
@@ -25,6 +35,8 @@
       dModel: numberOrNull("dModel"),
       dK: numberOrNull("dK"),
       ffHidden: numberOrNull("ffHidden"),
+      numHeads: numberOrNull("numHeads"),
+      numLayers: numberOrNull("numLayers"),
       seed: numberOrNull("seed"),
     };
 
@@ -99,6 +111,7 @@
 
   function renderResults(data) {
     resultsSection.hidden = false;
+    currentResult = data;
 
     renderConfigSummary(data.config);
     renderTokens(data.tokens, data.tokenIds);
@@ -108,7 +121,8 @@
 
     renderMatrix("mat-embeddings", data.embeddings, tokenLabels, dimLabels(data.config.dModel));
     renderMatrix("mat-positional", data.positionalEncoding, tokenLabels, dimLabels(data.config.dModel));
-    renderMatrix("mat-attention", data.attentionWeights, tokenLabels, tokenLabels);
+    populateAttentionSelectors(data.config.numLayers, data.config.numHeads);
+    renderAttentionHeatmap();
     renderMatrix("mat-output", data.encoderOutput, tokenLabels, dimLabels(data.config.dModel));
 
     resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -122,6 +136,8 @@
       ["d_model", config.dModel],
       ["d_k", config.dK],
       ["ff hidden", config.ffHidden],
+      ["heads", config.numHeads],
+      ["layers", config.numLayers],
       ["seed", config.seed],
     ];
     for (const [label, value] of entries) {
@@ -129,6 +145,67 @@
       span.textContent = `${label}: ${value}`;
       configSummary.appendChild(span);
     }
+  }
+
+  // Layer select defaults to the last layer and head select defaults to
+  // "average across heads" - together that reproduces the single heatmap
+  // this panel always showed before per-layer/per-head detail existed.
+  // With one layer and one head (today's default request), the selector row
+  // stays hidden so the panel looks exactly as before.
+  function populateAttentionSelectors(numLayers, numHeads) {
+    attentionLayerSelect.replaceChildren();
+    for (let layer = 0; layer < numLayers; layer++) {
+      const option = document.createElement("option");
+      option.value = String(layer);
+      option.textContent = `${layer}`;
+      attentionLayerSelect.appendChild(option);
+    }
+    attentionLayerSelect.value = String(numLayers - 1);
+
+    attentionHeadSelect.replaceChildren();
+    const averageOption = document.createElement("option");
+    averageOption.value = "average";
+    averageOption.textContent = "average";
+    attentionHeadSelect.appendChild(averageOption);
+    for (let head = 0; head < numHeads; head++) {
+      const option = document.createElement("option");
+      option.value = String(head);
+      option.textContent = `${head}`;
+      attentionHeadSelect.appendChild(option);
+    }
+    attentionHeadSelect.value = "average";
+
+    attentionControls.hidden = numLayers <= 1 && numHeads <= 1;
+  }
+
+  function renderAttentionHeatmap() {
+    if (!currentResult) return;
+
+    const layer = Number(attentionLayerSelect.value);
+    const headSelection = attentionHeadSelect.value;
+    const perHead = currentResult.attentionWeightsPerLayer[layer];
+    const matrix = headSelection === "average" ? averageMatrices(perHead) : perHead[Number(headSelection)];
+
+    const tokenLabels = currentResult.tokens.map((t, i) => `${i}:${t}`);
+    renderMatrix("mat-attention", matrix, tokenLabels, tokenLabels);
+  }
+
+  function averageMatrices(matrices) {
+    const rows = matrices[0].length;
+    const cols = matrices[0][0].length;
+    const result = Array.from({ length: rows }, () => new Array(cols).fill(0));
+
+    for (const matrix of matrices)
+      for (let i = 0; i < rows; i++)
+        for (let j = 0; j < cols; j++)
+          result[i][j] += matrix[i][j];
+
+    const inv = 1 / matrices.length;
+    for (let i = 0; i < rows; i++)
+      for (let j = 0; j < cols; j++)
+        result[i][j] *= inv;
+
+    return result;
   }
 
   function renderTokens(tokens, tokenIds) {

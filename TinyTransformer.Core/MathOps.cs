@@ -211,6 +211,29 @@ public static class MathOps
         Array.Copy(values, v, values.Length);
         return v;
     }
+    // Element-wise mean of one [T x T] attention matrix per head, collapsing
+    // multi-head attention into the single matrix single-head callers (and
+    // the existing API/UI heatmap) expect. Shared by TransformerEncoderBlock
+    // and TransformerEncoderStack.
+    public static float[,] AverageAcrossHeads(float[][,] perHead)
+    {
+        int rows = perHead[0].GetLength(0);
+        int cols = perHead[0].GetLength(1);
+        var sum = new float[rows, cols];
+
+        foreach (var head in perHead)
+            for (int i = 0; i < rows; i++)
+                for (int j = 0; j < cols; j++)
+                    sum[i, j] += head[i, j];
+
+        float inv = 1f / perHead.Length;
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                sum[i, j] *= inv;
+
+        return sum;
+    }
+
     public static float Mean(float[,] X, int row, int dim)
     {
         float mean = 0f;

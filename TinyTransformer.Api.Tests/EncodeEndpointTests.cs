@@ -108,13 +108,21 @@ public class EncodeEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         int dModel = body.GetProperty("config").GetProperty("dModel").GetInt32();
 
         body.GetProperty("config").GetProperty("numHeads").GetInt32().Should().Be(4);
-        // The attention-weights response shape doesn't change with numHeads -
+        // The top-level attention-weights shape doesn't change with numHeads -
         // multiple heads are averaged into the same [T x T] matrix (see
         // TransformerEncoderBlock.ForwardWithAttention).
         body.GetProperty("attentionWeights").GetArrayLength().Should().Be(sequenceLength);
         body.GetProperty("attentionWeights")[0].GetArrayLength().Should().Be(sequenceLength);
         body.GetProperty("encoderOutput").GetArrayLength().Should().Be(sequenceLength);
         body.GetProperty("encoderOutput")[0].GetArrayLength().Should().Be(dModel);
+
+        // attentionWeightsPerLayer is [layer][head][T][T] - one layer here,
+        // 4 unaveraged heads.
+        var perLayer = body.GetProperty("attentionWeightsPerLayer");
+        perLayer.GetArrayLength().Should().Be(1);
+        perLayer[0].GetArrayLength().Should().Be(4);
+        perLayer[0][0].GetArrayLength().Should().Be(sequenceLength);
+        perLayer[0][0][0].GetArrayLength().Should().Be(sequenceLength);
     }
 
     [Fact]
@@ -133,6 +141,14 @@ public class EncodeEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         body.GetProperty("attentionWeights")[0].GetArrayLength().Should().Be(sequenceLength);
         body.GetProperty("encoderOutput").GetArrayLength().Should().Be(sequenceLength);
         body.GetProperty("encoderOutput")[0].GetArrayLength().Should().Be(dModel);
+
+        // attentionWeightsPerLayer is [layer][head][T][T] - 3 layers here,
+        // one (unaveraged) head each.
+        var perLayer = body.GetProperty("attentionWeightsPerLayer");
+        perLayer.GetArrayLength().Should().Be(3);
+        perLayer[0].GetArrayLength().Should().Be(1);
+        perLayer[0][0].GetArrayLength().Should().Be(sequenceLength);
+        perLayer[0][0][0].GetArrayLength().Should().Be(sequenceLength);
     }
 
     [Theory]

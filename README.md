@@ -142,6 +142,7 @@ Every field except `text` is optional:
   "embeddings": [[...]],
   "positionalEncoding": [[...]],
   "attentionWeights": [[...]],
+  "attentionWeightsPerLayer": [[[[...]]]],
   "encoderOutput": [[...]]
 }
 ```
@@ -149,7 +150,12 @@ Every field except `text` is optional:
 `attentionWeights` is always `[sequenceLength x sequenceLength]` regardless of
 `numHeads`/`numLayers`: it's the last encoder block's attention, averaged
 across heads if there is more than one (see
-`TransformerEncoderBlock.ForwardWithAttention`).
+`TransformerEncoderBlock.ForwardWithAttention`). `attentionWeightsPerLayer` is
+the full, unaveraged detail behind it - indexed
+`[layer][head][sequenceLength][sequenceLength]` - for clients (like the
+frontend's layer/head selector) that want to inspect an individual layer or
+head; `attentionWeights` is exactly the average of `attentionWeightsPerLayer`'s
+last entry.
 
 Invalid input returns `400` with an RFC 9110 validation-problem body
 (`{ "errors": { "text": ["Text is required."] } }`); exceeding the rate limit (30
