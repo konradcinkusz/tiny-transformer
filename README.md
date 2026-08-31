@@ -118,6 +118,8 @@ Every field except `text` is optional:
   "dModel": 16,
   "dK": 16,
   "ffHidden": 32,
+  "numHeads": 1,
+  "numLayers": 1,
   "seed": 42
 }
 ```
@@ -128,19 +130,26 @@ Every field except `text` is optional:
 | `dModel` | 4-64 | 16 |
 | `dK` | 2-64 | 16 |
 | `ffHidden` | 4-256 | 32 |
+| `numHeads` | 1-8 | 1 |
+| `numLayers` | 1-6 | 1 |
 | `seed` | any integer | a fresh random value, returned in the response |
 
 ```json
 {
   "tokens": ["t", "h", "e", "␣", "c", "a", "t"],
   "tokenIds": [0, 1, 2, 3, 4, 5, 0],
-  "config": { "dModel": 16, "dK": 16, "ffHidden": 32, "seed": 42, "sequenceLength": 7, "vocabSize": 6 },
+  "config": { "dModel": 16, "dK": 16, "ffHidden": 32, "numHeads": 1, "numLayers": 1, "seed": 42, "sequenceLength": 7, "vocabSize": 6 },
   "embeddings": [[...]],
   "positionalEncoding": [[...]],
   "attentionWeights": [[...]],
   "encoderOutput": [[...]]
 }
 ```
+
+`attentionWeights` is always `[sequenceLength x sequenceLength]` regardless of
+`numHeads`/`numLayers`: it's the last encoder block's attention, averaged
+across heads if there is more than one (see
+`TransformerEncoderBlock.ForwardWithAttention`).
 
 Invalid input returns `400` with an RFC 9110 validation-problem body
 (`{ "errors": { "text": ["Text is required."] } }`); exceeding the rate limit (30
