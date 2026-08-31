@@ -95,4 +95,67 @@ public class EncodeEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("errors").TryGetProperty("dModel", out _).Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Encode_WithMultipleHeads_ReturnsMatchingShapes()
+    {
+        var response = await _client.PostAsJsonAsync("/api/encode", new { text = "hi", dModel = 8, dK = 4, ffHidden = 16, numHeads = 4, seed = 1 });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        int sequenceLength = body.GetProperty("config").GetProperty("sequenceLength").GetInt32();
+        int dModel = body.GetProperty("config").GetProperty("dModel").GetInt32();
+
+        body.GetProperty("config").GetProperty("numHeads").GetInt32().Should().Be(4);
+        // The attention-weights response shape doesn't change with numHeads -
+        // multiple heads are averaged into the same [T x T] matrix (see
+        // TransformerEncoderBlock.ForwardWithAttention).
+        body.GetProperty("attentionWeights").GetArrayLength().Should().Be(sequenceLength);
+        body.GetProperty("attentionWeights")[0].GetArrayLength().Should().Be(sequenceLength);
+        body.GetProperty("encoderOutput").GetArrayLength().Should().Be(sequenceLength);
+        body.GetProperty("encoderOutput")[0].GetArrayLength().Should().Be(dModel);
+    }
+
+    [Fact]
+    public async Task Encode_WithMultipleLayers_ReturnsMatchingShapes()
+    {
+        var response = await _client.PostAsJsonAsync("/api/encode", new { text = "hi", dModel = 8, dK = 4, ffHidden = 16, numLayers = 3, seed = 1 });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        int sequenceLength = body.GetProperty("config").GetProperty("sequenceLength").GetInt32();
+        int dModel = body.GetProperty("config").GetProperty("dModel").GetInt32();
+
+        body.GetProperty("config").GetProperty("numLayers").GetInt32().Should().Be(3);
+        body.GetProperty("attentionWeights").GetArrayLength().Should().Be(sequenceLength);
+        body.GetProperty("attentionWeights")[0].GetArrayLength().Should().Be(sequenceLength);
+        body.GetProperty("encoderOutput").GetArrayLength().Should().Be(sequenceLength);
+        body.GetProperty("encoderOutput")[0].GetArrayLength().Should().Be(dModel);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(100)]
+    public async Task Encode_WithNumHeadsOutOfRange_ReturnsValidationProblem(int numHeads)
+    {
+        var response = await _client.PostAsJsonAsync("/api/encode", new { text = "hi", numHeads });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("errors").TryGetProperty("numHeads", out _).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(100)]
+    public async Task Encode_WithNumLayersOutOfRange_ReturnsValidationProblem(int numLayers)
+    {
+        var response = await _client.PostAsJsonAsync("/api/encode", new { text = "hi", numLayers });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("errors").TryGetProperty("numLayers", out _).Should().BeTrue();
+    }
 }

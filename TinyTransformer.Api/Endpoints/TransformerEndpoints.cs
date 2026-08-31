@@ -28,7 +28,7 @@ public static class TransformerEndpoints
                 return Results.Ok(service.Encode(resolved));
             })
             .WithName("EncodeText")
-            .WithSummary("Run text through one transformer encoder block and return the embeddings, positional encoding, attention weights, and output for visualization.")
+            .WithSummary("Run text through a stack of transformer encoder blocks and return the embeddings, positional encoding, attention weights, and output for visualization.")
             .RequireRateLimiting(RateLimiterPolicies.Encode);
 
         return app;

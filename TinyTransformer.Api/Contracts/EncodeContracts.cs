@@ -12,16 +12,22 @@ public sealed record EncodeRequest(
     int? DModel,
     [property: JsonPropertyName("dK")] int? DK,
     int? FfHidden,
+    int? NumHeads,
+    int? NumLayers,
     int? Seed);
 
 // EncodeRequest with defaults applied and nulls resolved, ready to validate/run.
-public sealed record ResolvedEncodeRequest(string Text, int DModel, int DK, int FfHidden, int Seed)
+// NumHeads/NumLayers default to 1, preserving the single-head/single-block
+// behavior every request had before either was configurable.
+public sealed record ResolvedEncodeRequest(string Text, int DModel, int DK, int FfHidden, int NumHeads, int NumLayers, int Seed)
 {
     public static ResolvedEncodeRequest FromRequest(EncodeRequest request, int generatedSeed) => new(
         request.Text ?? string.Empty,
         request.DModel ?? 16,
         request.DK ?? 16,
         request.FfHidden ?? 32,
+        request.NumHeads ?? 1,
+        request.NumLayers ?? 1,
         request.Seed ?? generatedSeed);
 }
 
@@ -29,6 +35,8 @@ public sealed record EncodeConfig(
     int DModel,
     [property: JsonPropertyName("dK")] int DK,
     int FfHidden,
+    int NumHeads,
+    int NumLayers,
     int Seed,
     int SequenceLength,
     int VocabSize);
