@@ -174,4 +174,46 @@ public class EncodeEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("errors").TryGetProperty("numLayers", out _).Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Encode_WithUseTrainedModel_ReturnsThePretrainedDemoTask()
+    {
+        // No other fields are required - the trained model ignores them and
+        // always runs on its own fixed demo sequence.
+        var response = await _client.PostAsJsonAsync("/api/encode", new { useTrainedModel = true });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        body.GetProperty("tokenIds").EnumerateArray().Select(e => e.GetInt32())
+            .Should().Equal(TrainedModelFactory.DemoTokens);
+        body.GetProperty("config").GetProperty("usedTrainedModel").GetBoolean().Should().BeTrue();
+        body.GetProperty("config").GetProperty("vocabSize").GetInt32().Should().Be(TrainedModelFactory.VocabSize);
+        body.GetProperty("config").GetProperty("dModel").GetInt32().Should().Be(TrainedModelFactory.DModel);
+        body.GetProperty("config").GetProperty("numHeads").GetInt32().Should().Be(TrainedModelFactory.NumHeads);
+        body.GetProperty("config").GetProperty("numLayers").GetInt32().Should().Be(TrainedModelFactory.NumLayers);
+
+        int sequenceLength = TrainedModelFactory.DemoTokens.Length;
+        body.GetProperty("encoderOutput").GetArrayLength().Should().Be(sequenceLength);
+        body.GetProperty("attentionWeights").GetArrayLength().Should().Be(sequenceLength);
+    }
+
+    [Fact]
+    public async Task Encode_WithUseTrainedModel_IgnoresOtherFieldsRatherThanRejectingThem()
+    {
+        // dModel = 999 would fail validation for the random-weights path,
+        // but is simply irrelevant (and unvalidated) once useTrainedModel is set.
+        var response = await _client.PostAsJsonAsync("/api/encode", new { useTrainedModel = true, dModel = 999, text = "" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Encode_WithUseTrainedModel_IsDeterministicAcrossRequests()
+    {
+        var first = await (await _client.PostAsJsonAsync("/api/encode", new { useTrainedModel = true })).Content.ReadAsStringAsync();
+        var second = await (await _client.PostAsJsonAsync("/api/encode", new { useTrainedModel = true })).Content.ReadAsStringAsync();
+
+        first.Should().Be(second);
+    }
 }

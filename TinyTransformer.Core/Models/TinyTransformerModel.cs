@@ -40,7 +40,10 @@ public class TinyTransformerModel
         _outputHead = new Linear(dModel, vocabSize, rnd);
     }
 
-    private TinyTransformerModel(int vocabSize, int dModel, int dK, int ffHidden, int numHeads, int numLayers,
+    // Internal, not private: also used by Training.EchoTrainingDemo.ToModel()
+    // to package an already-trained instance's components for saving,
+    // alongside Load's use of it for a checkpoint being read back.
+    internal TinyTransformerModel(int vocabSize, int dModel, int dK, int ffHidden, int numHeads, int numLayers,
         Embedding embedding, TransformerEncoderStack encoder, Linear outputHead)
     {
         VocabSize = vocabSize;
@@ -63,6 +66,22 @@ public class TinyTransformerModel
         X = _positionalEncoding.Forward(X);
         var encoded = _encoder.Forward(X);
         return _outputHead.Forward(encoded);
+    }
+
+    // Every intermediate stage a visualizer needs, mirroring
+    // TinyTransformer.Api.Services.EncoderDemoService's random-weights
+    // pipeline exactly (including what "PositionalEncoding" means there -
+    // the raw sinusoidal table, not embeddings-plus-position), but reading
+    // through this (possibly pretrained) model's own components instead of
+    // freshly-constructed ones - see ROADMAP.md Phase 3's trained-model
+    // demo path.
+    public (float[,] Embeddings, float[,] PositionalEncoding, float[,] EncoderOutput, float[][][,] AttentionWeightsPerLayer) ForwardWithAllAttention(int[] tokens)
+    {
+        var embeddings = _embedding.Lookup(tokens);
+        var positionalEncodingTable = PositionalEncoding.Build(tokens.Length, DModel);
+        var withPosition = _positionalEncoding.Forward(embeddings);
+        var (encoderOutput, attentionWeightsPerLayer) = _encoder.ForwardWithAllAttention(withPosition);
+        return (embeddings, positionalEncodingTable, encoderOutput, attentionWeightsPerLayer);
     }
 
     public void Save(string path)

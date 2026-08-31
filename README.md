@@ -126,19 +126,20 @@ Every field except `text` is optional:
 
 | Field | Range | Default |
 |---|---|---|
-| `text` | 1-64 characters | *(required)* |
+| `text` | 1-64 characters | *(required unless `useTrainedModel` is true)* |
 | `dModel` | 4-64 | 16 |
 | `dK` | 2-64 | 16 |
 | `ffHidden` | 4-256 | 32 |
 | `numHeads` | 1-8 | 1 |
 | `numLayers` | 1-6 | 1 |
 | `seed` | any integer | a fresh random value, returned in the response |
+| `useTrainedModel` | `true`/`false` | `false` |
 
 ```json
 {
   "tokens": ["t", "h", "e", "␣", "c", "a", "t"],
   "tokenIds": [0, 1, 2, 3, 4, 5, 0],
-  "config": { "dModel": 16, "dK": 16, "ffHidden": 32, "numHeads": 1, "numLayers": 1, "seed": 42, "sequenceLength": 7, "vocabSize": 6 },
+  "config": { "dModel": 16, "dK": 16, "ffHidden": 32, "numHeads": 1, "numLayers": 1, "seed": 42, "sequenceLength": 7, "vocabSize": 6, "usedTrainedModel": false },
   "embeddings": [[...]],
   "positionalEncoding": [[...]],
   "attentionWeights": [[...]],
@@ -156,6 +157,17 @@ the full, unaveraged detail behind it - indexed
 frontend's layer/head selector) that want to inspect an individual layer or
 head; `attentionWeights` is exactly the average of `attentionWeightsPerLayer`'s
 last entry.
+
+**`useTrainedModel: true`** switches from a fresh, randomly-weighted model to
+a small model pretrained on Phase 2's toy "echo" task (see
+`TinyTransformer.Api.Services.TrainedModelFactory`), trained once at process
+startup and served from then on via `TinyTransformerModel`'s save/load format.
+Every other field is ignored in this mode - the trained model always runs on
+its own fixed demo token sequence, not on `text`, because its tokenizer has no
+fixed global vocabulary in common with arbitrary text (see
+`EncodeRequest`'s doc comment for why). `config.usedTrainedModel` reports which
+mode actually ran; `config.seed` is meaningless (and always `0`) when it's
+`true`.
 
 Invalid input returns `400` with an RFC 9110 validation-problem body
 (`{ "errors": { "text": ["Text is required."] } }`); exceeding the rate limit (30

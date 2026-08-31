@@ -2,9 +2,13 @@ using System.Threading.RateLimiting;
 using TinyTransformer.Api;
 using TinyTransformer.Api.Endpoints;
 using TinyTransformer.Api.Services;
+using TinyTransformer.Core.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Trained once, deterministically, at startup - see TrainedModelFactory for
+// why this happens here rather than from a committed checkpoint file.
+builder.Services.AddSingleton(_ => TrainedModelFactory.CreateTrainedModel());
 builder.Services.AddSingleton<EncoderDemoService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>

@@ -11,6 +11,11 @@
   const attentionControls = document.getElementById("attention-controls");
   const attentionLayerSelect = document.getElementById("attention-layer");
   const attentionHeadSelect = document.getElementById("attention-head");
+  const weightsTrainedRadio = document.getElementById("weights-trained");
+  const textInputGroup = document.getElementById("text-input-group");
+  const advancedSettings = document.getElementById("advanced-settings");
+  const hintEmbeddings = document.getElementById("hint-embeddings");
+  const hintTokens = document.getElementById("hint-tokens");
 
   const POS_COLOR = [91, 66, 243]; // indigo - positive values
   const NEG_COLOR = [211, 47, 47]; // red - negative values
@@ -24,21 +29,39 @@
   form.addEventListener("submit", onSubmit);
   attentionLayerSelect.addEventListener("change", renderAttentionHeatmap);
   attentionHeadSelect.addEventListener("change", renderAttentionHeatmap);
+  for (const radio of document.querySelectorAll('input[name="weights"]'))
+    radio.addEventListener("change", updateWeightsChoiceUi);
+  updateWeightsChoiceUi();
+
+  // Text/advanced settings are meaningless once the trained model is
+  // selected (it always runs on its own fixed demo task - see
+  // EncodeRequest's comment on why), so grey them out rather than leaving
+  // inputs on screen that the request will silently ignore.
+  function updateWeightsChoiceUi() {
+    const useTrainedModel = weightsTrainedRadio.checked;
+    textInputGroup.classList.toggle("is-disabled", useTrainedModel);
+    document.getElementById("text").disabled = useTrainedModel;
+    advancedSettings.classList.toggle("is-disabled", useTrainedModel);
+    for (const input of advancedSettings.querySelectorAll("input")) input.disabled = useTrainedModel;
+  }
 
   async function onSubmit(event) {
     event.preventDefault();
     hideError();
     setBusy(true);
 
-    const payload = {
-      text: document.getElementById("text").value,
-      dModel: numberOrNull("dModel"),
-      dK: numberOrNull("dK"),
-      ffHidden: numberOrNull("ffHidden"),
-      numHeads: numberOrNull("numHeads"),
-      numLayers: numberOrNull("numLayers"),
-      seed: numberOrNull("seed"),
-    };
+    const useTrainedModel = weightsTrainedRadio.checked;
+    const payload = useTrainedModel
+      ? { useTrainedModel: true }
+      : {
+          text: document.getElementById("text").value,
+          dModel: numberOrNull("dModel"),
+          dK: numberOrNull("dK"),
+          ffHidden: numberOrNull("ffHidden"),
+          numHeads: numberOrNull("numHeads"),
+          numLayers: numberOrNull("numLayers"),
+          seed: numberOrNull("seed"),
+        };
 
     try {
       const response = await fetch("/api/encode", {
@@ -113,6 +136,13 @@
     resultsSection.hidden = false;
     currentResult = data;
 
+    hintEmbeddings.textContent = data.config.usedTrainedModel
+      ? "Learned lookup vector per token id, from the pretrained demo model - shape [tokens × d_model]."
+      : "Random (untrained) lookup vector per token id - shape [tokens × d_model].";
+    hintTokens.textContent = data.config.usedTrainedModel
+      ? "The fixed synthetic token ids the trained model was trained on - not derived from any text (see the \"Weights\" note above)."
+      : "Each distinct character seen in the input gets the next free token id, in order of first appearance.";
+
     renderConfigSummary(data.config);
     renderTokens(data.tokens, data.tokenIds);
 
@@ -131,6 +161,7 @@
   function renderConfigSummary(config) {
     configSummary.replaceChildren();
     const entries = [
+      ["weights", config.usedTrainedModel ? "trained (demo task)" : "random"],
       ["sequence length", config.sequenceLength],
       ["vocab size (this request)", config.vocabSize],
       ["d_model", config.dModel],
@@ -138,8 +169,8 @@
       ["ff hidden", config.ffHidden],
       ["heads", config.numHeads],
       ["layers", config.numLayers],
-      ["seed", config.seed],
     ];
+    if (!config.usedTrainedModel) entries.push(["seed", config.seed]);
     for (const [label, value] of entries) {
       const span = document.createElement("span");
       span.textContent = `${label}: ${value}`;
