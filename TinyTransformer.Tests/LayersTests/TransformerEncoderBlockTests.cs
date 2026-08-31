@@ -64,6 +64,45 @@ public class TransformerEncoderBlockTests : TestsBase
     }
 
     [Fact]
+    public void Forward_DefaultHeadCountMatchesExplicitSingleHead()
+    {
+        // numHeads defaults to 1 so every caller written before multi-head
+        // support existed keeps compiling and behaving identically.
+        int T = 4, dModel = 6, dK = 3, ffHidden = 12;
+        var X = MathOps.InitMatrix(T, dModel, new Random(8));
+
+        var defaultBlock = new TransformerEncoderBlock(dModel, dK, ffHidden, new Random(8));
+        var explicitSingleHead = new TransformerEncoderBlock(dModel, dK, ffHidden, new Random(8), numHeads: 1);
+
+        MatricesShouldBeApproximatelyEqual(defaultBlock.Forward(X), explicitSingleHead.Forward(X), 1e-6f);
+    }
+
+    [Fact]
+    public void ForwardWithAttention_WithMultipleHeads_PreservesShapeAndRowStochasticity()
+    {
+        int T = 5, dModel = 12, dK = 4, ffHidden = 16, numHeads = 3;
+        var X = MathOps.InitMatrix(T, dModel, new Random(14));
+        var block = new TransformerEncoderBlock(dModel, dK, ffHidden, new Random(14), numHeads);
+
+        var (output, attentionWeights) = block.ForwardWithAttention(X);
+
+        output.GetLength(0).Should().Be(T);
+        output.GetLength(1).Should().Be(dModel);
+
+        // Averaging row-stochastic matrices (each row sums to 1) preserves
+        // row-stochasticity, so this holds for the multi-head average too.
+        attentionWeights.GetLength(0).Should().Be(T);
+        attentionWeights.GetLength(1).Should().Be(T);
+        for (int i = 0; i < T; i++)
+        {
+            float rowSum = 0f;
+            for (int j = 0; j < T; j++)
+                rowSum += attentionWeights[i, j];
+            rowSum.Should().BeApproximately(1f, 1e-4f);
+        }
+    }
+
+    [Fact]
     public void Forward_OutputIsLayerNormalizedPerToken()
     {
         // The block's last step is LayerNorm, so every output row should have
