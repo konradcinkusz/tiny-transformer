@@ -57,4 +57,32 @@ public class EchoTrainingDemoTests : TestsBase
 
         first.Should().BeApproximately(second, 1e-6f);
     }
+
+    [Fact]
+    public void ToModel_AfterTraining_MatchesTheDemosLossOnTheSameTokens()
+    {
+        // ToModel() shares the demo's own trained components (not copies),
+        // so re-computing the loss through the returned model should match
+        // the demo's own loss exactly for the same tokens.
+        int[] tokens = [3, 1, 4, 1, 5];
+        var demo = BuildDemo();
+
+        for (int i = 0; i < 20; i++)
+            demo.TrainStep(learningRate: 0.1f);
+
+        float demoLoss = demo.EvaluateLoss();
+        var model = demo.ToModel();
+
+        model.VocabSize.Should().Be(demo.VocabSize);
+        model.DModel.Should().Be(demo.DModel);
+        model.DK.Should().Be(demo.DK);
+        model.FfHidden.Should().Be(demo.FfHidden);
+        model.NumHeads.Should().Be(demo.NumHeads);
+        model.NumLayers.Should().Be(demo.NumLayers);
+
+        var logits = model.Forward(tokens);
+        float modelLoss = new CrossEntropyLoss().Forward(logits, tokens);
+
+        modelLoss.Should().BeApproximately(demoLoss, 1e-6f);
+    }
 }

@@ -1,6 +1,7 @@
 using TinyTransformer.Api.Contracts;
 using TinyTransformer.Core;
 using TinyTransformer.Core.Layers;
+using TinyTransformer.Core.Models;
 using TinyTransformer.Core.Tokenization;
 
 namespace TinyTransformer.Api.Services;
@@ -12,6 +13,19 @@ namespace TinyTransformer.Api.Services;
 // (Core has no HTTP/validation concerns).
 public sealed class EncoderDemoService
 {
+    // The fixed demo sequence TrainedModelFactory trained this on - "tokens"
+    // for the trained-model response, since a pretrained model's own vocab
+    // doesn't come from CharTokenizer (see EncodeRequest's comment on why).
+    private static readonly string[] TrainedModelTokenLabels =
+        TrainedModelFactory.DemoTokens.Select(id => id.ToString()).ToArray();
+
+    private readonly TinyTransformerModel _trainedModel;
+
+    public EncoderDemoService(TinyTransformerModel trainedModel)
+    {
+        _trainedModel = trainedModel;
+    }
+
     public const int MaxTextLength = 64;
     public const int MinDModel = 4, MaxDModel = 64;
     public const int MinDK = 2, MaxDK = 64;
@@ -30,6 +44,12 @@ public sealed class EncoderDemoService
     public IDictionary<string, string[]> Validate(ResolvedEncodeRequest request)
     {
         var errors = new Dictionary<string, List<string>>();
+
+        // The trained model ignores every other field (see EncodeRequest's
+        // comment on why), so none of them are validated in this mode - the
+        // simplest valid trained-model request is just { "useTrainedModel": true }.
+        if (request.UseTrainedModel)
+            return errors.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray());
 
         void AddError(string field, string message)
         {
@@ -65,7 +85,39 @@ public sealed class EncoderDemoService
     }
 
     // Assumes Validate(request) returned no errors.
-    public EncodeResponse Encode(ResolvedEncodeRequest request)
+    public EncodeResponse Encode(ResolvedEncodeRequest request) =>
+        request.UseTrainedModel ? EncodeWithTrainedModel() : EncodeWithRandomWeights(request);
+
+    private EncodeResponse EncodeWithTrainedModel()
+    {
+        var tokenIds = TrainedModelFactory.DemoTokens;
+        var (embeddings, positionalEncodingTable, encoderOutput, attentionWeightsPerLayer) =
+            _trainedModel.ForwardWithAllAttention(tokenIds);
+        var attentionWeights = MathOps.AverageAcrossHeads(attentionWeightsPerLayer[^1]);
+
+        var config = new EncodeConfig(
+            _trainedModel.DModel,
+            _trainedModel.DK,
+            _trainedModel.FfHidden,
+            _trainedModel.NumHeads,
+            _trainedModel.NumLayers,
+            Seed: 0,
+            tokenIds.Length,
+            _trainedModel.VocabSize,
+            UsedTrainedModel: true);
+
+        return new EncodeResponse(
+            TrainedModelTokenLabels,
+            tokenIds,
+            config,
+            embeddings.ToJagged(),
+            positionalEncodingTable.ToJagged(),
+            attentionWeights.ToJagged(),
+            attentionWeightsPerLayer.Select(perHead => perHead.Select(m => m.ToJagged()).ToArray()).ToArray(),
+            encoderOutput.ToJagged());
+    }
+
+    private EncodeResponse EncodeWithRandomWeights(ResolvedEncodeRequest request)
     {
         var tokenizer = new CharTokenizer();
         var tokenIds = tokenizer.Encode(request.Text);
@@ -93,7 +145,8 @@ public sealed class EncoderDemoService
             request.NumLayers,
             request.Seed,
             tokenIds.Length,
-            tokenizer.VocabSize);
+            tokenizer.VocabSize,
+            UsedTrainedModel: false);
 
         return new EncodeResponse(
             tokens,

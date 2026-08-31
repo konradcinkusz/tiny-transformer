@@ -138,6 +138,40 @@ details {
   margin: 0.5rem 0 1rem;
 }
 
+.weights-choice {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.weights-choice legend {
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0 0.4rem;
+}
+
+.weights-choice label.radio {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-weight: 400;
+  margin-bottom: 0.5rem;
+}
+
+.weights-choice label.radio:last-child {
+  margin-bottom: 0;
+}
+
+.weights-choice input[type="radio"] {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.is-disabled {
+  opacity: 0.5;
+}
+
 details summary {
   cursor: pointer;
   font-weight: 600;
