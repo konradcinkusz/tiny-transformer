@@ -73,6 +73,30 @@ public class TransformerEncoderStackTests : TestsBase
     }
 
     [Fact]
+    public void ForwardWithAllAttention_ReturnsEveryLayerAndHeadAndAveragingTheLastLayerMatchesForwardWithAttention()
+    {
+        int T = 5, dModel = 12, dK = 4, ffHidden = 16, numLayers = 3, numHeads = 2;
+        var X = MathOps.InitMatrix(T, dModel, new Random(19));
+        var stack = new TransformerEncoderStack(dModel, dK, ffHidden, numLayers, new Random(19), numHeads);
+
+        var (output, perLayerPerHead) = stack.ForwardWithAllAttention(X);
+        var (averagedOutput, averagedAttention) = stack.ForwardWithAttention(X);
+
+        MatricesShouldBeApproximatelyEqual(output, averagedOutput, 1e-6f);
+        perLayerPerHead.Length.Should().Be(numLayers);
+        foreach (var perHead in perLayerPerHead)
+        {
+            perHead.Length.Should().Be(numHeads);
+            foreach (var head in perHead)
+            {
+                head.GetLength(0).Should().Be(T);
+                head.GetLength(1).Should().Be(T);
+            }
+        }
+        MatricesShouldBeApproximatelyEqual(MathOps.AverageAcrossHeads(perLayerPerHead[^1]), averagedAttention, 1e-6f);
+    }
+
+    [Fact]
     public void Backward_MatchesNumericalGradientAcrossMultipleLayers()
     {
         int T = 4, dModel = 6, dK = 3, ffHidden = 12, numLayers = 3;

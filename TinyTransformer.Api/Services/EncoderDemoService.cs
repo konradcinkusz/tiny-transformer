@@ -1,4 +1,5 @@
 using TinyTransformer.Api.Contracts;
+using TinyTransformer.Core;
 using TinyTransformer.Core.Layers;
 using TinyTransformer.Core.Tokenization;
 
@@ -81,7 +82,8 @@ public sealed class EncoderDemoService
         var rawEmbeddings = embedding.Lookup(tokenIds);
         var positionalEncodingTable = Core.Layers.PositionalEncoding.Build(tokenIds.Length, request.DModel);
         var withPosition = new PositionalEncoding(request.DModel, Math.Max(tokenIds.Length, 1)).Forward(rawEmbeddings);
-        var (encoderOutput, attentionWeights) = encoderStack.ForwardWithAttention(withPosition);
+        var (encoderOutput, attentionWeightsPerLayer) = encoderStack.ForwardWithAllAttention(withPosition);
+        var attentionWeights = MathOps.AverageAcrossHeads(attentionWeightsPerLayer[^1]);
 
         var config = new EncodeConfig(
             request.DModel,
@@ -100,6 +102,7 @@ public sealed class EncoderDemoService
             rawEmbeddings.ToJagged(),
             positionalEncodingTable.ToJagged(),
             attentionWeights.ToJagged(),
+            attentionWeightsPerLayer.Select(perHead => perHead.Select(m => m.ToJagged()).ToArray()).ToArray(),
             encoderOutput.ToJagged());
     }
 }
