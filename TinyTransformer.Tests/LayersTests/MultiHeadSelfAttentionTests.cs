@@ -72,4 +72,55 @@ public class MultiHeadSelfAttentionTests : TestsBase
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void Backward_ThrowsIfCalledBeforeForward()
+    {
+        var attention = new MultiHeadSelfAttention(dModel: 8, dK: 4, numHeads: 2, new Random(1));
+        var dOutput = MathOps.InitMatrix(3, 8, new Random(1));
+
+        var act = () => attention.Backward(dOutput);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void Backward_MatchesNumericalGradient(int numHeads)
+    {
+        int T = 4, dModel = 6, dK = 3;
+        var X = MathOps.InitMatrix(T, dModel, new Random(5), scale: 1f);
+        var dOutput = MathOps.InitMatrix(T, dModel, new Random(6), scale: 1f);
+
+        var attention = new MultiHeadSelfAttention(dModel, dK, numHeads, new Random(42));
+        attention.Forward(X);
+        var analytical = attention.Backward(dOutput);
+
+        var numerical = NumericalGradient(
+            x => new MultiHeadSelfAttention(dModel, dK, numHeads, new Random(42)).Forward(x),
+            dOutput,
+            X);
+
+        MatricesShouldBeApproximatelyEqual(analytical, numerical, 2e-2f);
+    }
+
+    [Fact]
+    public void ApplyGradients_ChangesSubsequentOutputForTheSameInput()
+    {
+        // Confirms ApplyGradients isn't a no-op: it must actually reach every
+        // internal Wq/Wk/Wv/Wo Linear across every head, not just some of them.
+        int T = 4, dModel = 6, dK = 3, numHeads = 2;
+        var X = MathOps.InitMatrix(T, dModel, new Random(1), scale: 1f);
+        var dOutput = MathOps.InitMatrix(T, dModel, new Random(2), scale: 1f);
+        var attention = new MultiHeadSelfAttention(dModel, dK, numHeads, new Random(3));
+
+        var before = attention.Forward(X);
+        attention.Backward(dOutput);
+        attention.ApplyGradients(learningRate: 0.1f);
+        var after = attention.Forward(X);
+
+        var act = () => MatricesShouldBeApproximatelyEqual(after, before, 1e-9f);
+        act.Should().Throw<Exception>("parameters should have moved after a gradient step");
+    }
 }
