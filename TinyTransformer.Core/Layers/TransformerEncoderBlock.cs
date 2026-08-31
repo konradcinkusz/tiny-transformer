@@ -1,14 +1,15 @@
 namespace TinyTransformer.Core.Layers;
 
-public class TransformerEncoderBlock : ILayer
+public class TransformerEncoderBlock : IDifferentiableLayer, IHasParameterGradients
 {
-    // Concrete type (not ILayer) because ForwardWithAttention below needs the
-    // attention weights MultiHeadSelfAttention computes internally, which the
-    // plain ILayer.Forward contract does not expose.
+    // Concrete types (not ILayer) because ForwardWithAttention needs the
+    // attention weights MultiHeadSelfAttention computes internally, and
+    // Backward/ApplyGradients need every sub-layer's own gradient support,
+    // none of which the plain ILayer.Forward contract exposes.
     private readonly MultiHeadSelfAttention _selfAttention;
-    private readonly ILayer _feedForward;
-    private readonly ILayer _ln1;
-    private readonly ILayer _ln2;
+    private readonly FeedForwardAuto _feedForward;
+    private readonly LayerNorm _ln1;
+    private readonly LayerNorm _ln2;
 
     // numHeads defaults to 1 so every existing caller (TinyTransformer.Api,
     // TinyTransformer.ConsoleApp, and the tests that predate multi-head
@@ -40,6 +41,35 @@ public class TransformerEncoderBlock : ILayer
         var ffOutput = _feedForward.Forward(x1);
         var output = _ln2.Forward(MathOps.Add(x1, ffOutput));
         return (output, AverageAcrossHeads(attentionWeightsPerHead));
+    }
+
+    // Reverse of ForwardWithAttention. Each residual sum (X + attentionOutput,
+    // x1 + ffOutput) sends the *same* upstream gradient to both of its inputs
+    // - d(a+b)/da = d(a+b)/db = 1 - so x1 and X each accumulate a gradient
+    // contribution from two different paths, which get summed.
+    public float[,] Backward(float[,] dOutput)
+    {
+        var dSumTwo = _ln2.Backward(dOutput); // gradient w.r.t. (x1 + ffOutput)
+        var dX1FromResidual = dSumTwo;
+        var dFfOutput = dSumTwo;
+
+        var dX1FromFeedForward = _feedForward.Backward(dFfOutput);
+        var dX1 = MathOps.Add(dX1FromResidual, dX1FromFeedForward);
+
+        var dSumOne = _ln1.Backward(dX1); // gradient w.r.t. (X + attentionOutput)
+        var dXFromResidual = dSumOne;
+        var dAttentionOutput = dSumOne;
+
+        var dXFromAttention = _selfAttention.Backward(dAttentionOutput);
+        return MathOps.Add(dXFromResidual, dXFromAttention);
+    }
+
+    public void ApplyGradients(float learningRate)
+    {
+        _selfAttention.ApplyGradients(learningRate);
+        _feedForward.ApplyGradients(learningRate);
+        _ln1.ApplyGradients(learningRate);
+        _ln2.ApplyGradients(learningRate);
     }
 
     private static float[,] AverageAcrossHeads(float[][,] perHead)

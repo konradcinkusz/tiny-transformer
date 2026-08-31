@@ -3,7 +3,7 @@ namespace TinyTransformer.Core.Layers;
 // Stacks numLayers TransformerEncoderBlocks sequentially, each block's output
 // feeding the next - real transformers run N blocks, not one, and until now
 // every caller in this codebase only ever ran a single block per request.
-public class TransformerEncoderStack : ILayer
+public class TransformerEncoderStack : IDifferentiableLayer, IHasParameterGradients
 {
     private readonly TransformerEncoderBlock[] _blocks;
 
@@ -36,5 +36,24 @@ public class TransformerEncoderStack : ILayer
         // The constructor guard (numLayers > 0) guarantees the loop above ran
         // at least once, so lastAttention is always assigned here.
         return (current, lastAttention!);
+    }
+
+    // Reverse of Forward: walk the blocks back-to-front, each one's Backward
+    // producing the gradient w.r.t. its own input - which is exactly the
+    // upstream gradient the previous block's Backward needs.
+    public float[,] Backward(float[,] dOutput)
+    {
+        float[,] dCurrent = dOutput;
+
+        for (int i = _blocks.Length - 1; i >= 0; i--)
+            dCurrent = _blocks[i].Backward(dCurrent);
+
+        return dCurrent;
+    }
+
+    public void ApplyGradients(float learningRate)
+    {
+        foreach (var block in _blocks)
+            block.ApplyGradients(learningRate);
     }
 }

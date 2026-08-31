@@ -103,6 +103,42 @@ public class TransformerEncoderBlockTests : TestsBase
     }
 
     [Fact]
+    public void Backward_MatchesNumericalGradient()
+    {
+        int T = 4, dModel = 6, dK = 3, ffHidden = 12, numHeads = 2;
+        var X = MathOps.InitMatrix(T, dModel, new Random(30), scale: 1f);
+        var dOutput = MathOps.InitMatrix(T, dModel, new Random(31), scale: 1f);
+
+        var block = new TransformerEncoderBlock(dModel, dK, ffHidden, new Random(99), numHeads);
+        block.Forward(X);
+        var analytical = block.Backward(dOutput);
+
+        var numerical = NumericalGradient(
+            x => new TransformerEncoderBlock(dModel, dK, ffHidden, new Random(99), numHeads).Forward(x),
+            dOutput,
+            X);
+
+        MatricesShouldBeApproximatelyEqual(analytical, numerical, 3e-2f);
+    }
+
+    [Fact]
+    public void ApplyGradients_ChangesSubsequentOutputForTheSameInput()
+    {
+        int T = 4, dModel = 6, dK = 3, ffHidden = 12;
+        var X = MathOps.InitMatrix(T, dModel, new Random(1), scale: 1f);
+        var dOutput = MathOps.InitMatrix(T, dModel, new Random(2), scale: 1f);
+        var block = new TransformerEncoderBlock(dModel, dK, ffHidden, new Random(3));
+
+        var before = block.Forward(X);
+        block.Backward(dOutput);
+        block.ApplyGradients(learningRate: 0.1f);
+        var after = block.Forward(X);
+
+        var act = () => MatricesShouldBeApproximatelyEqual(after, before, 1e-9f);
+        act.Should().Throw<Exception>("every sub-layer's parameters should have moved after a gradient step");
+    }
+
+    [Fact]
     public void Forward_OutputIsLayerNormalizedPerToken()
     {
         // The block's last step is LayerNorm, so every output row should have
