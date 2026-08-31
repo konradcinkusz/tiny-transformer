@@ -13,6 +13,19 @@ public class FeedForwardAuto : IDifferentiableLayer, IHasParameterGradients
         _l2 = new Linear(hidden, dModel, rnd);
     }
 
+    // Deterministic - for reconstructing a previously-trained feed-forward
+    // block (see TinyTransformer.Core.Models.TinyTransformerModel).
+    public FeedForwardAuto(Linear l1, Linear l2)
+    {
+        _l1 = l1;
+        _relu = new ReLU();
+        _l2 = l2;
+    }
+
+    // Read-only accessors for persistence.
+    public Linear L1 => _l1;
+    public Linear L2 => _l2;
+
     public float[,] Forward(float[,] X)
     {
         var h = _l1.Forward(X);

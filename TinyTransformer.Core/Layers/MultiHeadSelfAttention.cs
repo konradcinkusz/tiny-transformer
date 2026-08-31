@@ -55,6 +55,32 @@ public class MultiHeadSelfAttention : IDifferentiableLayer, IHasParameterGradien
         _Wo = new Linear(dK * numHeads, dModel, rnd);
     }
 
+    // Deterministic - mirrors Linear's (W, b) constructor, for reconstructing
+    // a previously-trained attention block (see
+    // TinyTransformer.Core.Models.TinyTransformerModel). dK isn't derivable
+    // from the Linear shapes alone (Wq[h] is dModel x dK, but so is every
+    // other per-head projection), so it's passed explicitly.
+    public MultiHeadSelfAttention(int dK, Linear[] wq, Linear[] wk, Linear[] wv, Linear wo)
+    {
+        if (wq.Length != wk.Length || wq.Length != wv.Length)
+            throw new ArgumentException("Wq, Wk, and Wv must have the same number of heads");
+
+        _dK = dK;
+        _numHeads = wq.Length;
+        _Wq = wq;
+        _Wk = wk;
+        _Wv = wv;
+        _Wo = wo;
+    }
+
+    // Read-only accessors for persistence.
+    public int DK => _dK;
+    public int NumHeads => _numHeads;
+    public IReadOnlyList<Linear> Wq => _Wq;
+    public IReadOnlyList<Linear> Wk => _Wk;
+    public IReadOnlyList<Linear> Wv => _Wv;
+    public Linear Wo => _Wo;
+
     public float[,] Forward(float[,] X) => ForwardWithAttention(X).Output;
 
     // AttentionWeights holds one [T x T] matrix per head, in head order.
