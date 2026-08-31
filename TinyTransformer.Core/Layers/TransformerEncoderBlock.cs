@@ -23,6 +23,22 @@ public class TransformerEncoderBlock : IDifferentiableLayer, IHasParameterGradie
         _ln2 = new LayerNorm(dModel);
     }
 
+    // Deterministic - for reconstructing a previously-trained block (see
+    // TinyTransformer.Core.Models.TinyTransformerModel).
+    public TransformerEncoderBlock(MultiHeadSelfAttention selfAttention, FeedForwardAuto feedForward, LayerNorm ln1, LayerNorm ln2)
+    {
+        _selfAttention = selfAttention;
+        _feedForward = feedForward;
+        _ln1 = ln1;
+        _ln2 = ln2;
+    }
+
+    // Read-only accessors for persistence.
+    public MultiHeadSelfAttention SelfAttention => _selfAttention;
+    public FeedForwardAuto FeedForward => _feedForward;
+    public LayerNorm Ln1 => _ln1;
+    public LayerNorm Ln2 => _ln2;
+
     public float[,] Forward(float[,] X) => ForwardWithAttention(X).Output;
 
     // Same computation as Forward, but also returns the self-attention

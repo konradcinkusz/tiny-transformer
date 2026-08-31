@@ -17,6 +17,19 @@ public class TransformerEncoderStack : IDifferentiableLayer, IHasParameterGradie
             _blocks[i] = new TransformerEncoderBlock(dModel, dK, ffHidden, rnd, numHeads);
     }
 
+    // Deterministic - for reconstructing a previously-trained stack (see
+    // TinyTransformer.Core.Models.TinyTransformerModel).
+    public TransformerEncoderStack(TransformerEncoderBlock[] blocks)
+    {
+        if (blocks is null || blocks.Length == 0)
+            throw new ArgumentException("Provide at least one block", nameof(blocks));
+
+        _blocks = blocks;
+    }
+
+    // Read-only accessor for persistence.
+    public IReadOnlyList<TransformerEncoderBlock> Blocks => _blocks;
+
     public float[,] Forward(float[,] X) => ForwardWithAttention(X).Output;
 
     // AttentionWeights is the *last* block's attention matrix (itself already

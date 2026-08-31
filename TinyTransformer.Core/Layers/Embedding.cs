@@ -13,6 +13,19 @@ public class Embedding : IEmbedding
         _table = MathOps.InitMatrix(vocabSize, dModel, rnd, 0.02f);
     }
 
+    // Deterministic - mirrors Linear's (W, b) constructor, for reconstructing
+    // a previously-trained embedding table (see
+    // TinyTransformer.Core.Models.TinyTransformerModel).
+    public Embedding(float[,] table)
+    {
+        _table = table ?? throw new ArgumentNullException(nameof(table));
+        _vocabSize = table.GetLength(0);
+        _dModel = table.GetLength(1);
+    }
+
+    // Read-only copy for persistence.
+    public float[,] Table => (float[,])_table.Clone();
+
     public float[,] Lookup(int[] tokenIds)//forward pass for embeddings
     {
         int T = tokenIds.Length;

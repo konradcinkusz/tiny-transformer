@@ -36,6 +36,11 @@ public class Linear : IDifferentiableLayer, IHasParameterGradients
             throw new ArgumentException("W (din x dout) and b (dout) must agree");
     }
 
+    // Read-only copies for persistence (see TinyTransformer.Core.Models.TinyTransformerModel) -
+    // callers get a snapshot, not a handle that could bypass ApplyGradients.
+    public float[,] Weights => (float[,])_W.Clone();
+    public float[] Bias => (float[])_b.Clone();
+
     //how do I compute my outputs given my inputs and my current parameters
     public float[,] Forward(float[,] X)
     {

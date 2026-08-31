@@ -38,6 +38,10 @@ public class LayerNorm : IDifferentiableLayer, IHasParameterGradients
         _d = gamma.Length;
     }
 
+    // Read-only copies for persistence (see TinyTransformer.Core.Models.TinyTransformerModel).
+    public float[] Gamma => (float[])_gamma.Clone();
+    public float[] Beta => (float[])_beta.Clone();
+
     public float[,] Forward(float[,] X)
     {
         int n = X.GetLength(0); // n = number of tokens (rows)
