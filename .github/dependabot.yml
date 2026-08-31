@@ -15,3 +15,13 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # net8.0 is a deliberate LTS pin (docs/architecture/DECISIONS.md) - the
+      # build and runtime stages must stay on the same major version as each
+      # other and as the app's TFM, or the container fails at startup, not
+      # build time. Bumping the base images to a new major is a project
+      # decision (retarget the TFM too), not something to accept unreviewed.
+      - dependency-name: "mcr.microsoft.com/dotnet/sdk"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "mcr.microsoft.com/dotnet/aspnet"
+        update-types: ["version-update:semver-major"]

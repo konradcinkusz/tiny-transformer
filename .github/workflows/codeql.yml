@@ -1,8 +1,12 @@
 name: CodeQL
 
+# No `push: branches: [master]` trigger: this repo has GitHub's default code
+# scanning setup enabled, which owns push-to-default-branch analysis and
+# fails this advanced-setup workflow with a zero-job startup_failure if it
+# also tries to run on that event (confirmed on run #2, right after this
+# workflow's first merge to master). pull_request coverage (the one that
+# actually gates merges) plus the weekly schedule below don't conflict.
 on:
-  push:
-    branches: [master]
   pull_request:
     branches: [master]
   schedule:
