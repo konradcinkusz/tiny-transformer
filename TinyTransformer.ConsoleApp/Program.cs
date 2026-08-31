@@ -1,5 +1,6 @@
 using System.Globalization;
 using TinyTransformer.Core.Layers;
+using TinyTransformer.Core.Training;
 
 namespace TinyTransformer.ConsoleApp
 {
@@ -35,6 +36,40 @@ namespace TinyTransformer.ConsoleApp
             Console.WriteLine();
             Console.WriteLine($"Encoded sequence (after {numLayers} stacked encoder blocks, [tokens x dModel]):");
             PrintMatrix(encoded);
+
+            Console.WriteLine();
+            RunTrainingDemo();
+        }
+
+        // Demonstrates that the full forward -> loss -> backward -> SGD-update
+        // loop actually works, by overfitting a tiny fixed "echo" task
+        // (predict each token's own id from its contextualized representation).
+        static void RunTrainingDemo()
+        {
+            int[] tokens = [3, 1, 4, 1, 5];
+            var demo = new EchoTrainingDemo(
+                tokens: tokens,
+                vocabSize: 6,
+                dModel: 8,
+                dK: 4,
+                ffHidden: 16,
+                numHeads: 2,
+                numLayers: 1,
+                rnd: new Random(0));
+
+            Console.WriteLine($"Training loop demo (echo task, tokens: [{string.Join(", ", tokens)}]):");
+
+            const int iterations = 200;
+            const int printEvery = 20;
+            float loss = 0f;
+            for (int i = 0; i < iterations; i++)
+            {
+                loss = demo.TrainStep(learningRate: 0.1f);
+                if (i % printEvery == 0 || i == iterations - 1)
+                    Console.WriteLine($"  iteration {i,4}: loss = {loss:F4}");
+            }
+
+            Console.WriteLine($"Final loss after {iterations} iterations: {demo.EvaluateLoss():F4}");
         }
 
         static void PrintMatrix(float[,] M)

@@ -30,4 +30,40 @@ public class FeedForwardAutoTests : TestsBase
         for (int i = 0; i < dModel; i++)
             Y[0, i].Should().BeApproximately(Y[1, i], 1e-5f); //compare each column value of 0 row with 1 row
     }
+
+    [Fact]
+    public void Backward_MatchesNumericalGradient()
+    {
+        int dModel = 5, hidden = 8, T = 4;
+        var X = MathOps.InitMatrix(T, dModel, new Random(1), scale: 1f);
+        var dOutput = MathOps.InitMatrix(T, dModel, new Random(2), scale: 1f);
+
+        var ff = new FeedForwardAuto(dModel, hidden, new Random(9));
+        ff.Forward(X);
+        var analytical = ff.Backward(dOutput);
+
+        var numerical = NumericalGradient(
+            x => new FeedForwardAuto(dModel, hidden, new Random(9)).Forward(x),
+            dOutput,
+            X);
+
+        MatricesShouldBeApproximatelyEqual(analytical, numerical, 2e-2f);
+    }
+
+    [Fact]
+    public void ApplyGradients_ChangesSubsequentOutputForTheSameInput()
+    {
+        int dModel = 5, hidden = 8, T = 4;
+        var X = MathOps.InitMatrix(T, dModel, new Random(1), scale: 1f);
+        var dOutput = MathOps.InitMatrix(T, dModel, new Random(2), scale: 1f);
+        var ff = new FeedForwardAuto(dModel, hidden, new Random(3));
+
+        var before = ff.Forward(X);
+        ff.Backward(dOutput);
+        ff.ApplyGradients(learningRate: 0.1f);
+        var after = ff.Forward(X);
+
+        var act = () => MatricesShouldBeApproximatelyEqual(after, before, 1e-9f);
+        act.Should().Throw<Exception>("both Linear layers' parameters should have moved after a gradient step");
+    }
 }

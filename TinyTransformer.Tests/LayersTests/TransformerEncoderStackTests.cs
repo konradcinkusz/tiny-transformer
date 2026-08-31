@@ -71,4 +71,40 @@ public class TransformerEncoderStackTests : TestsBase
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void Backward_MatchesNumericalGradientAcrossMultipleLayers()
+    {
+        int T = 4, dModel = 6, dK = 3, ffHidden = 12, numLayers = 3;
+        var X = MathOps.InitMatrix(T, dModel, new Random(40), scale: 1f);
+        var dOutput = MathOps.InitMatrix(T, dModel, new Random(41), scale: 1f);
+
+        var stack = new TransformerEncoderStack(dModel, dK, ffHidden, numLayers, new Random(55));
+        stack.Forward(X);
+        var analytical = stack.Backward(dOutput);
+
+        var numerical = NumericalGradient(
+            x => new TransformerEncoderStack(dModel, dK, ffHidden, numLayers, new Random(55)).Forward(x),
+            dOutput,
+            X);
+
+        MatricesShouldBeApproximatelyEqual(analytical, numerical, 3e-2f);
+    }
+
+    [Fact]
+    public void ApplyGradients_ReachesEveryLayer()
+    {
+        int T = 4, dModel = 6, dK = 3, ffHidden = 12, numLayers = 3;
+        var X = MathOps.InitMatrix(T, dModel, new Random(1), scale: 1f);
+        var dOutput = MathOps.InitMatrix(T, dModel, new Random(2), scale: 1f);
+        var stack = new TransformerEncoderStack(dModel, dK, ffHidden, numLayers, new Random(3));
+
+        var before = stack.Forward(X);
+        stack.Backward(dOutput);
+        stack.ApplyGradients(learningRate: 0.1f);
+        var after = stack.Forward(X);
+
+        var act = () => MatricesShouldBeApproximatelyEqual(after, before, 1e-9f);
+        act.Should().Throw<Exception>("every layer's parameters should have moved after a gradient step");
+    }
 }
