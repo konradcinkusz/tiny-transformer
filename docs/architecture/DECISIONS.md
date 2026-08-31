@@ -62,12 +62,33 @@ that doesn't exist.
 forward pass through freshly-initialized (untrained) weights, JSON out. Nothing to
 persist between requests.
 
-**Single-head attention, no training loop.** Pre-existing properties of the Core
-library, not decisions made for this change - see the README's "What this is not."
-`SelfAttention` implements one attention head; there is no backprop/optimizer, so every
-run uses random, untrained weights. Multi-head attention and autodiff are both
-substantial, separate undertakings - out of scope for "wire up an API and frontend
-around what already exists here."
+**No training loop.** Still true as of this update, but the rest of this entry is
+stale and worth correcting rather than leaving misleading: multi-head attention
+(`MultiHeadSelfAttention`) and multi-layer stacking (`TransformerEncoderStack`) were
+added in [ROADMAP.md](../../ROADMAP.md) Phase 1 - the single-head/single-block
+limitation this paragraph used to describe no longer exists. What's still true: there
+is no backprop/optimizer anywhere, so every run uses random, untrained weights.
+Autodiff is a substantial, separate undertaking, tracked as ROADMAP.md Phase 2.
+
+**Encoder-only by design; no decoder.** ("Reconcile repo description/README with
+actual model scope", Phase 1's third issue.) With multi-head attention and multi-layer
+stacking now real, the one remaining gap between this repo's GitHub description
+("encoder–decoder, multi-head self-attention...") and its actual code is the decoder
+half - and that gap is staying open deliberately, not by oversight. An encoder-decoder
+pair needs masked self-attention, cross-attention from decoder to encoder output, and
+an autoregressive generation loop - each a meaningfully sized addition on top of
+everything Phase 1-2 already cover, and none of it teaches something the encoder side
+hasn't already taught about how attention and feed-forward sublayers work. If a
+concrete reason to add one shows up (e.g. a sequence-to-sequence demo task that
+actually needs it), that's the trigger to revisit this - not before.
+
+The corresponding fix on the GitHub repository's **description** and **topics**
+fields could not be made by the session that wrote this decision: repo metadata isn't
+reachable through issue/PR tools, and no `gh`-equipped or repo-admin session was
+available. Flagged in issue "Sync GitHub repo description and topics with actual
+project scope" for whoever next has repo admin access - drop "encoder–decoder" from
+the description, and check topics include `transformer`, `self-attention`, `csharp`,
+`dotnet`, `educational`.
 
 **`docs/diagram.png` and `docs/diagram_solution.png` predate this change and describe
 a planned, not-implemented direction** - `diagram_solution.png` in particular sketches
