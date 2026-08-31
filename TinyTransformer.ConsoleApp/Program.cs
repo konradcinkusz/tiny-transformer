@@ -11,6 +11,7 @@ namespace TinyTransformer.ConsoleApp
             int dModel = 16; //vector size per token
             int dK = 16; //attention head size
             int ffHidden = 32; //feed forward inner layer size
+            int numLayers = 2; //stacked encoder blocks
 
             var rnd = new Random(0);
 
@@ -19,20 +20,20 @@ namespace TinyTransformer.ConsoleApp
             //Components
             var embedding = new Embedding(vocabSize, dModel, rnd);
             var posEncoding = new PositionalEncoding(dModel);
-            var block = new TransformerEncoderBlock(dModel, dK, ffHidden, rnd);
+            var stack = new TransformerEncoderStack(dModel, dK, ffHidden, numLayers, rnd);
 
             //Forward
             float[,] X = embedding.Lookup(tokens);
             X = posEncoding.Forward(X); // inject position information before the encoder
-            var (encoded, attentionWeights) = block.ForwardWithAttention(X);
+            var (encoded, attentionWeights) = stack.ForwardWithAttention(X);
 
             //Inspect
             Console.WriteLine($"Input tokens: [{string.Join(", ", tokens)}]");
             Console.WriteLine();
-            Console.WriteLine("Attention weights (row = query token, col = attends-to token):");
+            Console.WriteLine("Attention weights of the last encoder block (row = query token, col = attends-to token):");
             PrintMatrix(attentionWeights);
             Console.WriteLine();
-            Console.WriteLine("Encoded sequence (post encoder block, [tokens x dModel]):");
+            Console.WriteLine($"Encoded sequence (after {numLayers} stacked encoder blocks, [tokens x dModel]):");
             PrintMatrix(encoded);
         }
 
