@@ -200,6 +200,8 @@ cargo-culting the whole thing or applying nothing and staying silent about it.
 ## Contributing
 
 Issues and PRs are welcome - see the templates under `.github/`. CI (`dotnet test`,
-Docker build, CodeQL, and a secret scan) runs on every PR.
+Docker build, CodeQL, and a secret scan) runs on every PR. For local dev setup, what's
+expected to pass before opening a PR, and a worked example of adding a new layer, see
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
