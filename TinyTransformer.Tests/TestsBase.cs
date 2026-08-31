@@ -69,7 +69,7 @@ public class TestsBase
         return grad;
     }
 
-    private static float DotProduct(float[,] A, float[,] B)
+    protected static float DotProduct(float[,] A, float[,] B)
     {
         float sum = 0f;
         for (int i = 0; i < A.GetLength(0); i++)
