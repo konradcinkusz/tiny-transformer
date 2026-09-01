@@ -6,7 +6,27 @@ session that wrote this document (no `gh` CLI and no milestone-creation tool wer
 available — see "A note on tooling" at the end). Each phase below stands in for a
 milestone; each issue references its phase by name in its body.
 
-## Where the project stands (2026-08-31)
+## Where the project stands (2026-09-01)
+
+All four phases below are complete except one item explicitly blocked on tooling (see
+Phase 4). TinyTransformer is a from-scratch, dependency-free (beyond xUnit/
+FluentAssertions/Swashbuckle) transformer **encoder** in C#, with multi-head attention,
+multi-layer stacking, a real (if deliberately toy) hand-derived backward pass and SGD
+training loop, a save/load format for trained weights, an ASP.NET Core API and browser
+demo exposing all of it (including a "Weights: Random / Trained" toggle), tests, CI,
+and docs (see `README.md` and `docs/architecture/DECISIONS.md`) - kept up to date as
+each phase landed, not just written once at the start.
+
+**The one item this roadmap could not finish:** the repository's `description` and
+`topics` fields still don't match the project's actual scope (they claim
+"encoder–decoder", which was never built - see `docs/architecture/DECISIONS.md`'s
+"Encoder-only by design" entry). Updating them needs the repo-settings API, which no
+tool available across this roadmap's execution could reach (no `gh` CLI, no
+repo-admin-scoped API tool) - see Phase 4 and the comment on its tracking issue for the
+exact values to apply.
+
+<details>
+<summary>Original "where the project stands" snapshot (2026-08-31, before any phase below started)</summary>
 
 TinyTransformer is a from-scratch, dependency-free (beyond xUnit/FluentAssertions/
 Swashbuckle) transformer **encoder** in C#, with an ASP.NET Core API, a browser demo,
@@ -21,50 +41,59 @@ with single-head attention. Phase 1 below closes part of that gap (multi-head,
 multi-layer); the rest is a documentation/description decision, not a build task — see
 Phase 1's third issue.
 
+</details>
+
 ## Phases
 
-### Phase 1 — Model Fidelity (target: 2026-09-21)
+### Phase 1 — Model Fidelity ✅ done (2026-08-31, target was 2026-09-21)
 
 Close the gap between what the project claims to be and what it does, on the parts
 worth building rather than just rewording.
 
-- Implement multi-head self-attention in `TinyTransformer.Core`
-- Support stacking multiple `TransformerEncoderBlock`s (configurable depth)
-- Reconcile the repo description/README with actual model scope, once the above land
-  (decide and document: encoder-only by design, no decoder — update the GitHub repo
-  description/topics and README accordingly)
+- [x] Implement multi-head self-attention in `TinyTransformer.Core` (#18)
+- [x] Support stacking multiple `TransformerEncoderBlock`s (configurable depth) (#19)
+- [x] Reconcile the repo description/README with actual model scope, once the above
+  land (decide and document: encoder-only by design, no decoder — update the GitHub
+  repo description/topics and README accordingly) (#20 - the README/DECISIONS.md half
+  landed; the GitHub repo description/topics half is still blocked, see Phase 4)
 
-### Phase 2 — Learning & Training (target: 2026-10-12)
+### Phase 2 — Learning & Training ✅ done (2026-08-31, target was 2026-10-12)
 
 Give the project an actual training story. This is the biggest lift on the roadmap —
 hand-written backprop through attention is real numerical work, not a weekend task —
 and it's split into the smallest pieces that still ship independently, per issue.
 
-- Add gradient-carrying infrastructure to Core (what a layer's `Backward()` needs, and
-  where gradients accumulate)
-- Implement backward pass + gradient tests for `Linear` and `LayerNorm`
-- Implement backward pass + gradient tests for Softmax / cross-entropy loss
-- Implement backward pass + gradient tests for `SelfAttention`
-- Wire a full training loop (forward + backward + SGD) with a toy overfitting example
-  in `TinyTransformer.ConsoleApp`
-- Add model weight save/load (JSON) so a trained model can be persisted and reloaded
-  instead of always starting from random weights
+- [x] Add gradient-carrying infrastructure to Core (what a layer's `Backward()` needs,
+  and where gradients accumulate) (#21, #22)
+- [x] Implement backward pass + gradient tests for `Linear` and `LayerNorm` (#22)
+- [x] Implement backward pass + gradient tests for Softmax / cross-entropy loss (#23)
+- [x] Implement backward pass + gradient tests for `SelfAttention` (#24)
+- [x] Wire a full training loop (forward + backward + SGD) with a toy overfitting
+  example in `TinyTransformer.ConsoleApp` (#25)
+- [x] Add model weight save/load (JSON) so a trained model can be persisted and
+  reloaded instead of always starting from random weights (#26)
 
-### Phase 3 — Demo & API Polish (target: 2026-11-02)
+### Phase 3 — Demo & API Polish ✅ done (2026-08-31, target was 2026-11-02)
 
 Surface Phases 1 and 2 through the actual product surface (the API and the browser
 demo), not just the console app.
 
-- Expose multi-head/multi-layer configuration through `POST /api/encode`
-- Update the frontend to visualize multiple layers and attention heads (not just one
-  block's output)
-- Add a "train a tiny model" demo path connecting Phase 2's training loop to the UI
+- [x] Expose multi-head/multi-layer configuration through `POST /api/encode` (#27)
+- [x] Update the frontend to visualize multiple layers and attention heads (not just
+  one block's output) (#28)
+- [x] Add a "train a tiny model" demo path connecting Phase 2's training loop to the UI
+  (#29)
 
 ### Phase 4 — Community & Release Readiness (target: 2026-11-16)
 
-- Add `CONTRIBUTING.md`: dev setup and how to add a new `ILayer` implementation
-- Sync the GitHub repo description and topics with the project's actual scope (this
-  needs a human with repo admin access or a `gh`-equipped session — see below)
+- [x] Add `CONTRIBUTING.md`: dev setup and how to add a new `ILayer` implementation
+  (#30)
+- [x] Update README/`DECISIONS.md` sections left stale by Phases 2-3 (#45 - found
+  during this phase's own release-readiness pass, not originally listed above)
+- [ ] Sync the GitHub repo description and topics with the project's actual scope -
+  **blocked**: needs a human with repo admin access or a `gh`-equipped session, neither
+  of which any session executing this roadmap had; see the comment on #31 for the
+  exact description/topics to apply
 
 ## Sequencing notes
 
