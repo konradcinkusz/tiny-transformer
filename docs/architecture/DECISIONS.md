@@ -59,16 +59,24 @@ would add a second language and package manager, plus a BFF proxy, to guard a se
 that doesn't exist.
 
 **No database, no migrations (P3, P4).** Every request is stateless: text in, one
-forward pass through freshly-initialized (untrained) weights, JSON out. Nothing to
-persist between requests.
+forward pass through either freshly-initialized (untrained) weights or a shared
+pretrained singleton (see the next entry), JSON out. Nothing is written per request -
+the pretrained singleton is trained once at process startup, not derived from any
+request, and there is still no per-user or per-session state anywhere.
 
-**No training loop.** Still true as of this update, but the rest of this entry is
-stale and worth correcting rather than leaving misleading: multi-head attention
-(`MultiHeadSelfAttention`) and multi-layer stacking (`TransformerEncoderStack`) were
-added in [ROADMAP.md](../../ROADMAP.md) Phase 1 - the single-head/single-block
-limitation this paragraph used to describe no longer exists. What's still true: there
-is no backprop/optimizer anywhere, so every run uses random, untrained weights.
-Autodiff is a substantial, separate undertaking, tracked as ROADMAP.md Phase 2.
+**Training loop added (Phase 2); still no general-purpose autodiff.** This entry
+originally said "no training loop... no backprop/optimizer anywhere" - that's no
+longer accurate. [ROADMAP.md](../../ROADMAP.md) Phase 2 added a real, hand-derived
+backward pass for every layer, a plain SGD update step, and a save/load format for
+persisting trained weights (`TinyTransformer.Core.Training.EchoTrainingDemo`,
+`TinyTransformer.Core.Models.TinyTransformerModel`); Phase 3 surfaced it in the live
+demo as a "Weights: Random / Trained" toggle (`TinyTransformer.Api.Services.
+TrainedModelFactory`). What's still true: there is no general-purpose autograd engine
+(`Backward` is a hand-written derivative per layer, not a computation graph built from
+recorded operations), no optimizer beyond plain SGD, and the "trained" model is a small
+demonstration overfit to one fixed five-token sequence, not a language model trained on
+real data - proving the forward/backward/update mechanics work end to end was always
+the goal here, not training something that "knows" anything.
 
 **Encoder-only by design; no decoder.** ("Reconcile repo description/README with
 actual model scope", Phase 1's third issue.) With multi-head attention and multi-layer
@@ -92,14 +100,21 @@ the description, and check topics include `transformer`, `self-attention`, `csha
 
 **`docs/diagram.png` and `docs/diagram_solution.png` predate this change and describe
 a planned, not-implemented direction** - `diagram_solution.png` in particular sketches
-an `Autograd` package (`Tensor`, `TensorOps`, `Backward()`, cross-entropy) and
-`*Auto`-suffixed layer classes that do not exist in the codebase; only `FeedForwardAuto`
-was ever actually built, and it has no autograd behavior despite the name. These are
-left in place as historical design sketches (deleting a contributor's design thinking
-isn't this change's call to make) but are now labeled in the README as a **concept
-sketch for a possible future training path, not current behavior** - the corollary
-to P14 is that undocumented-as-aspirational diagrams are exactly as misleading as a
-stale README describing a system that no longer exists.
+a generic `Autograd` package: a `Tensor`/`TensorOps` computation graph with `Backward()`
+recorded and replayed automatically. Phase 2 (see the training-loop entry above) did
+add `Backward()` methods and cross-entropy loss, so those two specific pieces of the
+sketch are no longer missing - but not via that generic package: every layer's
+`Backward` is a hand-derived method on that concrete layer (`Linear.Backward`,
+`LayerNorm.Backward`, etc.), not a `Tensor` recording operations for automatic
+differentiation, so there is still no generic autograd engine matching what the
+diagram actually depicts. `*Auto`-suffixed layer classes from the sketch still don't
+exist beyond `FeedForwardAuto`, which predates Phase 2 and has no autograd behavior
+despite the name. These diagrams are left in place as historical design sketches
+(deleting a contributor's design thinking isn't this change's call to make) but are
+labeled in the README as a **concept sketch for a possible future generic-autograd
+path, not a description of how training actually works today** - the corollary to P14
+is that undocumented-as-aspirational diagrams are exactly as misleading as a stale
+README describing a system that no longer exists.
 
 **FluentAssertions 8.x licensing.** The test projects use FluentAssertions under the
 Xceed Community License (free for non-commercial use, which this project is). This

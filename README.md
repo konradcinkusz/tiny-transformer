@@ -20,22 +20,27 @@ visualizes what comes out at each stage.
 
 ## What this is (and is not)
 
-**This is:** a hand-written encoder block - embedding lookup, sinusoidal positional
-encoding, single-head self-attention, residual connections, LayerNorm, and a
-feed-forward sublayer - runnable from the command line, a REST API, or a browser, with
-a unit test for every layer.
+**This is:** a hand-written transformer encoder - embedding lookup, sinusoidal
+positional encoding, multi-head self-attention, multi-layer stacking, residual
+connections, LayerNorm, and a feed-forward sublayer - runnable from the command line, a
+REST API, or a browser, with a unit test for every layer and every backward pass. It
+also has a real (if deliberately toy) training story: a hand-derived backward pass and
+plain SGD update loop, and a save/load format for persisting trained weights - see the
+live demo's "Weights: Random / Trained" toggle, or
+`TinyTransformer.Core/Training/EchoTrainingDemo.cs` for the console version.
 
-**This is not:** a trained language model. There is no backpropagation, no optimizer,
-and no training loop anywhere in this repository - every run initializes its weights
-from a random seed and performs a single forward pass. The output is real and correctly
-computed, but it reflects what an *untrained* transformer computes, not learned
-language behavior. Two smaller, related honesty notes: tokenization is a simple
-character-level scheme (not BPE/subword - there's no pretrained vocabulary to load),
-and attention is single-head, not multi-head. See
-[`docs/architecture/DECISIONS.md`](docs/architecture/DECISIONS.md) for the reasoning
-behind these and other scope choices, including two design diagrams under `docs/` that
-sketch a possible future autograd/training path that was never built - they're kept for
-historical context but are **not** a description of current behavior.
+**This is not:** a trained language model. The "Trained" option in the demo is a small
+model overfit to one fixed, five-token synthetic sequence (the "echo" task - predict
+each token's own id from its contextualized representation) - it demonstrates that the
+training mechanics genuinely work end to end, not anything resembling learned language
+understanding. "Random" weights stay the default, and are still the more honest way to
+see what an *untrained* transformer computes. Two smaller, related honesty notes:
+tokenization is a simple character-level scheme (not BPE/subword - there's no
+pretrained vocabulary to load), and there is no decoder (this project is encoder-only
+by design). See [`docs/architecture/DECISIONS.md`](docs/architecture/DECISIONS.md) for
+the reasoning behind these and other scope choices, including two design diagrams under
+`docs/` that predate the training loop actually being built and no longer reflect its
+real shape - they're kept for historical context only.
 
 ## Quick start
 
@@ -85,18 +90,25 @@ Type a sentence, hit "Run encoder", and the page sends it to `POST /api/encode`,
 
 1. **Tokenizes** the text character-by-character (`CharTokenizer`) - each distinct
    character seen gets the next free token id, in order of first appearance.
-2. **Looks up embeddings** for each token id (`Embedding`) - a random vector per id,
-   since nothing here is trained.
+2. **Looks up embeddings** for each token id (`Embedding`) - a random vector per id by
+   default, or a learned one if you pick "Trained" weights (see below).
 3. **Adds positional encoding** (`PositionalEncoding`, the classic sinusoidal scheme) -
    without this step, self-attention is provably permutation-*equivariant* (see
    `SelfAttentionTests`), meaning token order carries no information at all.
-4. **Runs one `TransformerEncoderBlock`**: self-attention → residual + LayerNorm →
-   feed-forward → residual + LayerNorm.
-5. Returns the embeddings, the positional encoding table, the attention weights, and the
-   final output - all rendered as heatmaps in the browser.
+4. **Runs the requested stack of `TransformerEncoderBlock`s** (one block, one head by
+   default; `numHeads`/`numLayers` under "Advanced settings" configure more of each):
+   self-attention → residual + LayerNorm → feed-forward → residual + LayerNorm, once per
+   layer.
+5. Returns the embeddings, the positional encoding table, the attention weights (both a
+   per-layer/per-head breakdown and an averaged summary), and the final output - all
+   rendered as heatmaps in the browser.
 
-The same seed always reproduces the same "model" (weights) and therefore the same
-output, so a response is replayable by resending it with its own `seed` value.
+The same seed always reproduces the same randomly-initialized "model" (weights) and
+therefore the same output, so a response is replayable by resending it with its own
+`seed` value. Picking **"Trained"** weights instead runs a small model pretrained once
+at API startup on the fixed toy task described above (see `TrainedModelFactory`) -
+`seed` and every other advanced setting are ignored in that mode, since the trained
+model's shape and weights are fixed, not derived from the request.
 
 ## API reference
 
